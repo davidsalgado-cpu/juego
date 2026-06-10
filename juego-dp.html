@@ -1,0 +1,734 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>¡Llega a la Meta! — DP SER</title>
+<style>
+  @import url('https://fonts.googleapis.com/css2?family=Cabin:wght@400;600;700&display=swap');
+  *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+  :root {
+    --verde:   #2C5F2D;
+    --verde-c: #97BC62;
+    --azul:    #065A82;
+    --rosa:    #DD0779;
+    --amarillo:#FCCF00;
+    --blanco:  #FFFFFF;
+    --oscuro:  #1a1a2e;
+  }
+  body {
+    font-family: 'Cabin', sans-serif;
+    background: var(--oscuro);
+    color: var(--blanco);
+    min-height: 100vh;
+    display: flex; flex-direction: column;
+    align-items: center; justify-content: center;
+    overflow: hidden; user-select: none;
+  }
+
+  /* ── PANTALLA INICIO ── */
+  #pantalla-inicio {
+    text-align: center; padding: 2rem; max-width: 520px;
+    animation: fadeIn .6s ease;
+  }
+  #pantalla-inicio .logo {
+    width: 72px; height: 72px; background: var(--amarillo);
+    border-radius: 50%; display: flex; align-items: center;
+    justify-content: center; font-size: 2rem; margin: 0 auto 1.5rem;
+  }
+  #pantalla-inicio h1 {
+    font-size: 2rem; font-weight: 700;
+    line-height: 1.2; margin-bottom: .75rem; color: var(--amarillo);
+  }
+  #pantalla-inicio p {
+    font-size: 1rem; color: #ccc; line-height: 1.6; margin-bottom: 2rem;
+  }
+  #pantalla-inicio p strong { color: var(--blanco); }
+  .btn-inicio {
+    background: var(--rosa); color: var(--blanco);
+    border: none; border-radius: 12px; padding: .9rem 2.4rem;
+    font-family: 'Cabin', sans-serif; font-size: 1.1rem; font-weight: 700;
+    cursor: pointer; transition: transform .1s, background .2s;
+    box-shadow: 0 4px 20px rgba(221,7,121,.4);
+  }
+  .btn-inicio:hover { background: #c0066a; transform: scale(1.03); }
+  .btn-inicio:active { transform: scale(.97); }
+
+  /* ── PANTALLA JUEGO ── */
+  #pantalla-juego {
+    display: none; flex-direction: column; align-items: center;
+    width: 100%; max-width: 860px; padding: 1rem 1rem; gap: .7rem;
+  }
+  .hud {
+    display: flex; align-items: center;
+    justify-content: space-between; width: 100%; gap: 1rem;
+  }
+  .hud-stat {
+    text-align: center; background: rgba(255,255,255,.07);
+    border-radius: 10px; padding: .5rem .9rem; min-width: 80px;
+  }
+  .hud-stat .val {
+    font-size: 1.6rem; font-weight: 700; color: var(--amarillo); line-height: 1;
+  }
+  .hud-stat .lbl {
+    font-size: .7rem; color: #aaa; text-transform: uppercase; letter-spacing: .05em;
+  }
+  .barra-wrap {
+    width: 100%; background: rgba(255,255,255,.1);
+    border-radius: 999px; height: 14px; overflow: hidden;
+  }
+  .barra-fill {
+    height: 100%; border-radius: 999px;
+    background: linear-gradient(90deg, var(--verde-c), var(--amarillo));
+    width: 0%; transition: width .1s ease, background .4s;
+  }
+  .barra-fill.danger { background: linear-gradient(90deg, #c0392b, var(--rosa)); }
+
+  .pista-wrap {
+    width: 100%; background: rgba(255,255,255,.04);
+    border: 1px solid rgba(255,255,255,.1);
+    border-radius: 20px; overflow: hidden; position: relative;
+  }
+  canvas#pista { display: block; width: 100%; height: auto; }
+
+  /* ── BURBUJA LÍDER ── */
+  #burbuja-lider {
+    position: absolute; top: 6px; left: 50%;
+    transform: translateX(-50%);
+    background: var(--azul);
+    border: 2px solid var(--amarillo);
+    border-radius: 14px;
+    padding: .4rem .9rem;
+    font-size: .82rem; font-weight: 700;
+    color: var(--blanco);
+    max-width: 320px; text-align: center;
+    opacity: 0; pointer-events: none;
+    transition: opacity .35s ease;
+    z-index: 10;
+  }
+  #burbuja-lider.visible { opacity: 1; }
+
+  .tecla-zona {
+    display: flex; flex-direction: column; align-items: center; gap: .5rem;
+  }
+  .tecla-instruccion {
+    font-size: .82rem; color: #aaa; letter-spacing: .04em;
+  }
+  .tecla-instruccion span { color: var(--amarillo); font-weight: 700; }
+  .tecla {
+    width: 60px; height: 60px; border-radius: 12px;
+    background: rgba(255,255,255,.1); border: 2px solid rgba(255,255,255,.25);
+    display: flex; align-items: center; justify-content: center;
+    font-size: 1.4rem; transition: transform .07s, background .07s; cursor: pointer;
+  }
+  .tecla.pressed {
+    transform: scale(.88) translateY(3px); background: var(--amarillo);
+    border-color: var(--amarillo); color: #000;
+    box-shadow: 0 0 16px rgba(252,207,0,.6);
+  }
+  .msg-velocidad {
+    font-size: .85rem; font-weight: 600;
+    color: var(--verde-c); min-height: 1.2rem; transition: color .3s;
+  }
+  .msg-velocidad.lento { color: var(--rosa); }
+
+  /* ── PANTALLA VICTORIA ── */
+  #pantalla-victoria {
+    display: none; flex-direction: column;
+    align-items: center; text-align: center;
+    padding: 2rem; max-width: 560px; gap: 1.2rem;
+    animation: fadeIn .8s ease;
+  }
+  .confetti-emoji { font-size: 3rem; animation: bounce 1s infinite alternate; }
+  #pantalla-victoria h2 {
+    font-size: 1.3rem; font-weight: 700;
+    color: var(--verde-c); line-height: 1.4;
+  }
+  .frase-final {
+    background: linear-gradient(135deg, var(--verde) 0%, var(--azul) 100%);
+    border-left: 5px solid var(--amarillo); border-radius: 12px;
+    padding: 1.4rem 1.8rem; font-size: 1.15rem;
+    font-weight: 700; font-style: italic;
+    line-height: 1.55; color: var(--blanco);
+  }
+  .btn-reiniciar {
+    background: transparent; border: 2px solid var(--amarillo);
+    color: var(--amarillo); border-radius: 10px;
+    padding: .7rem 2rem; font-family: 'Cabin', sans-serif;
+    font-size: 1rem; font-weight: 700; cursor: pointer;
+    transition: background .2s, color .2s;
+  }
+  .btn-reiniciar:hover { background: var(--amarillo); color: #000; }
+
+  @keyframes fadeIn { from { opacity: 0; transform: translateY(16px); } to { opacity: 1; transform: none; } }
+  @keyframes bounce { from { transform: scale(1); } to { transform: scale(1.2); } }
+  @media (prefers-reduced-motion: reduce) { * { animation: none !important; transition: none !important; } }
+</style>
+</head>
+<body>
+
+<!-- PANTALLA INICIO -->
+<div id="pantalla-inicio">
+  <div class="logo">🎓</div>
+  <h1>¡Llega a la Meta!</h1>
+  <p>
+    Ayuda a tu docente a llegar al aula. Presiona <strong>cualquier tecla</strong>
+    sin parar para que avance. Si dejas de presionar, <strong>retrocede</strong>.
+    Cuanto más cerca estés de la meta, más difícil se vuelve — ¡no te rindas!
+  </p>
+  <button class="btn-inicio" id="btnIniciar">¡Empezar!</button>
+</div>
+
+<!-- PANTALLA JUEGO -->
+<div id="pantalla-juego">
+  <div class="hud">
+    <div class="hud-stat">
+      <div class="val" id="hud-pulsaciones">0</div>
+      <div class="lbl">Pulsaciones</div>
+    </div>
+    <div class="hud-stat" style="flex:1">
+      <div class="barra-wrap">
+        <div class="barra-fill" id="barra"></div>
+      </div>
+      <div class="lbl" style="margin-top:.3rem">Progreso</div>
+    </div>
+    <div class="hud-stat">
+      <div class="val">?</div>
+      <div class="lbl">Meta</div>
+    </div>
+  </div>
+
+  <div class="pista-wrap" style="position:relative">
+    <canvas id="pista" width="800" height="280"></canvas>
+    <div id="burbuja-lider"></div>
+  </div>
+
+  <div class="msg-velocidad" id="msgVelocidad">¡Presiona una tecla para arrancar!</div>
+
+  <div class="tecla-zona">
+    <div class="tecla-instruccion">Presiona <span>cualquier tecla</span> del teclado o toca el botón</div>
+    <div class="tecla" id="teclaVisual" title="Toca aquí si estás en móvil">👆</div>
+  </div>
+</div>
+
+<!-- PANTALLA VICTORIA -->
+<div id="pantalla-victoria">
+  <div class="confetti-emoji">🏫</div>
+  <h2>¡El docente llegó al aula!</h2>
+  <div class="frase-final">
+    "Las acciones que hacemos hoy son la base que construimos para nuestras escuelas"
+  </div>
+  <button class="btn-reiniciar" id="btnReiniciar">Volver a jugar</button>
+</div>
+
+<script>
+// ══════════════════════════════════════════════════════════════
+//  CONSTANTES
+// ══════════════════════════════════════════════════════════════
+const META_PULSACIONES = 300;
+const DECAY_MS         = 350;   // ms sin tecla → empieza a retroceder
+const RETROCESO_RATE   = 0.055; // retroceso por frame (px) — más rápido
+const MAX_VEL          = 3.8;
+const PULS_DECAY_RATE  = 0.08;  // pulsaciones perdidas por frame al retroceder
+const ANCHO = 800, ALTO = 280;
+const META_X  = ANCHO - 90;
+const SUELO   = ALTO  - 55;
+
+// Zona "difícil": último 40% del recorrido
+// En esa zona, cada 3 pulsaciones cuenta como 1
+const ZONA_DIFICIL_X = (META_X - 60) * 0.60 + 60; // 60% del recorrido
+
+// ── FRASES NEGATIVAS AL RETROCEDER (cada 10 puls perdidas) ────
+const FRASES_NEGATIVAS = [
+  "😰 ¡Perdiendo terreno! ¡No te rindas!",
+  "📉 ¡El camino se borra! ¡Sigue presionando!",
+  "😟 La escuela se aleja… ¡vuelve a intentarlo!",
+  "⚠️ ¡Sin constancia no hay transformación!",
+  "😬 ¡El esfuerzo no puede detenerse!",
+  "🌧️ ¡La motivación no espera! ¡Actúa ya!",
+  "😣 ¡Cada segundo cuenta! ¡Regresa al ritmo!",
+  "📛 ¡Sin acción, no hay cambio!",
+];
+
+// ── FRASES DEL LÍDER (cada 10 pulsaciones efectivas) ──────────
+const FRASES_LIDER = [
+  "¡Tú puedes! Cada paso cuenta.",
+  "¡Sigue adelante, lo estás logrando!",
+  "¡La constancia construye escuelas!",
+  "¡No te detengas, falta poco!",
+  "¡Tu esfuerzo transforma vidas!",
+  "¡Eso es! ¡Tú eres el cambio!",
+  "¡El aula te necesita!",
+  "¡Cada acción importa, sigue!",
+  "¡Juntos llegamos más lejos!",
+  "¡La perseverancia es el camino!",
+  "¡Eres un ejemplo para tus estudiantes!",
+  "¡Vamos, ya casi llegamos!",
+];
+
+// ══════════════════════════════════════════════════════════════
+//  ESTADO
+// ══════════════════════════════════════════════════════════════
+let pulsaciones    = 0;   // pulsaciones reales (puede decrecer)
+let pulsEfectivas  = 0;   // pulsaciones que mueven (con descuento zona difícil)
+let pulsContDificil= 0;   // contador dentro de la zona difícil (1-3)
+let pulsDecayAcum  = 0;   // acumulador fraccionario para restar pulsaciones
+let velocidad      = 0;
+let posX           = 60;
+let posXLider      = 30;  // el líder siempre detrás
+let lastKeyTime    = 0;
+let juegoActivo    = false;
+let victoria       = false;
+let ultimaFrasePuls= 0;   // en qué pulsación efectiva se mostró la última frase
+let ultimaFraseNeg = 0;   // marcador para frases negativas
+let burbujaTimer   = null;
+let animFrame      = 0;
+
+// ══════════════════════════════════════════════════════════════
+//  DOM
+// ══════════════════════════════════════════════════════════════
+const elInicio   = document.getElementById('pantalla-inicio');
+const elJuego    = document.getElementById('pantalla-juego');
+const elVictoria = document.getElementById('pantalla-victoria');
+const canvas     = document.getElementById('pista');
+const ctx        = canvas.getContext('2d');
+const hudPuls    = document.getElementById('hud-pulsaciones');
+const barra      = document.getElementById('barra');
+const msgVel     = document.getElementById('msgVelocidad');
+const teclaVis   = document.getElementById('teclaVisual');
+const burbujaEl  = document.getElementById('burbuja-lider');
+
+// ══════════════════════════════════════════════════════════════
+//  EVENTOS
+// ══════════════════════════════════════════════════════════════
+document.getElementById('btnIniciar').addEventListener('click', iniciarJuego);
+document.getElementById('btnReiniciar').addEventListener('click', reiniciar);
+teclaVis.addEventListener('pointerdown', registrarPulso);
+document.addEventListener('keydown', (e) => {
+  if (!juegoActivo) return;
+  if (['Tab','CapsLock','Shift','Control','Alt','Meta'].includes(e.key)) return;
+  e.preventDefault();
+  registrarPulso();
+  teclaVis.classList.add('pressed');
+  clearTimeout(teclaVis._t);
+  teclaVis._t = setTimeout(() => teclaVis.classList.remove('pressed'), 110);
+});
+
+// ══════════════════════════════════════════════════════════════
+//  FLUJO
+// ══════════════════════════════════════════════════════════════
+function iniciarJuego() {
+  elInicio.style.display   = 'none';
+  elJuego.style.display    = 'flex';
+  elVictoria.style.display = 'none';
+  reiniciarEstado();
+  juegoActivo = true;
+  requestAnimationFrame(loop);
+}
+
+function reiniciar() {
+  elVictoria.style.display = 'none';
+  elJuego.style.display    = 'flex';
+  reiniciarEstado();
+  juegoActivo = true;
+  requestAnimationFrame(loop);
+}
+
+function reiniciarEstado() {
+  pulsaciones     = 0;
+  pulsEfectivas   = 0;
+  pulsContDificil = 0;
+  pulsDecayAcum   = 0;
+  velocidad       = 0;
+  posX            = 60;
+  posXLider       = 30;
+  lastKeyTime     = 0;
+  victoria        = false;
+  ultimaFrasePuls = 0;
+  ultimaFraseNeg  = 0;
+  hudPuls.textContent = '0';
+  barra.style.width   = '0%';
+  barra.classList.remove('danger');
+  msgVel.textContent  = '¡Presiona una tecla para arrancar!';
+  msgVel.classList.remove('lento');
+  ocultarBurbuja();
+}
+
+// ══════════════════════════════════════════════════════════════
+//  REGISTRAR PULSO
+// ══════════════════════════════════════════════════════════════
+function registrarPulso() {
+  if (!juegoActivo || victoria) return;
+
+  pulsaciones++;
+  lastKeyTime = performance.now();
+  hudPuls.textContent = pulsaciones;
+
+  // ── Zona difícil: cada 3 pulsaciones cuenta como 1 ──
+  const enZonaDificil = posX >= ZONA_DIFICIL_X;
+  let contaEfectiva = false;
+
+  if (enZonaDificil) {
+    pulsContDificil++;
+    if (pulsContDificil >= 3) {
+      pulsContDificil = 0;
+      contaEfectiva   = true;
+    }
+  } else {
+    contaEfectiva = true;
+  }
+
+  if (contaEfectiva) {
+    pulsEfectivas++;
+    velocidad = Math.min(MAX_VEL, velocidad + 0.55);
+  } else {
+    // pulso "gastado" — feedback visual leve sin avance de velocidad
+    velocidad = Math.min(MAX_VEL, velocidad + 0.10);
+  }
+
+  // barra de progreso basada en posición real
+  const pct = Math.min(100, ((posX - 60) / (META_X - 60)) * 100);
+  barra.style.width = pct + '%';
+  if (pct >= 75) barra.classList.remove('danger');
+
+  // Mantener ultimaFraseNeg sincronizado para detectar caídas
+  ultimaFraseNeg = Math.floor(pulsaciones / 10);
+
+  // ── Frases del líder cada 10 pulsaciones efectivas ──
+  if (pulsEfectivas > 0 && pulsEfectivas % 10 === 0 && pulsEfectivas !== ultimaFrasePuls) {
+    ultimaFrasePuls = pulsEfectivas;
+    const idx = Math.floor(Math.random() * FRASES_LIDER.length);
+    mostrarBurbuja(FRASES_LIDER[idx]);
+  }
+}
+
+// ══════════════════════════════════════════════════════════════
+//  BURBUJAS DE MOTIVACIÓN / NEGATIVOS
+// ══════════════════════════════════════════════════════════════
+function mostrarBurbuja(texto) {
+  burbujaEl.textContent = '💬 ' + texto;
+  burbujaEl.style.background    = '';
+  burbujaEl.style.borderColor   = '';
+  burbujaEl.style.color         = '';
+  burbujaEl.classList.add('visible');
+  clearTimeout(burbujaTimer);
+  burbujaTimer = setTimeout(ocultarBurbuja, 2800);
+}
+function mostrarBurbujaRoja(texto) {
+  burbujaEl.textContent = texto;
+  burbujaEl.style.background    = '#5c0a0a';
+  burbujaEl.style.borderColor   = '#DD0779';
+  burbujaEl.style.color         = '#ffaaaa';
+  burbujaEl.classList.add('visible');
+  clearTimeout(burbujaTimer);
+  burbujaTimer = setTimeout(ocultarBurbuja, 2400);
+}
+function ocultarBurbuja() {
+  burbujaEl.classList.remove('visible');
+  // reset estilos inline al ocultar
+  burbujaEl.style.background  = '';
+  burbujaEl.style.borderColor = '';
+  burbujaEl.style.color       = '';
+}
+
+// ══════════════════════════════════════════════════════════════
+//  LOOP PRINCIPAL
+// ══════════════════════════════════════════════════════════════
+function loop(ts) {
+  if (!juegoActivo) return;
+
+  const sinTecla = ts - lastKeyTime;
+
+  // Si no hay tecla → retroceder posición Y pulsaciones
+  if (lastKeyTime > 0 && sinTecla > DECAY_MS) {
+    const factor = 1 + (sinTecla - DECAY_MS) / 900;
+    const retroceso = RETROCESO_RATE * factor;
+    posX = Math.max(60, posX - retroceso);
+    velocidad = Math.max(0, velocidad - 0.032);
+    barra.classList.add('danger');
+
+    // Restar pulsaciones acumulando fracciones
+    pulsDecayAcum += PULS_DECAY_RATE * factor;
+    if (pulsDecayAcum >= 1) {
+      const perdidas = Math.floor(pulsDecayAcum);
+      pulsDecayAcum -= perdidas;
+      pulsaciones    = Math.max(0, pulsaciones - perdidas);
+      pulsEfectivas  = Math.max(0, pulsEfectivas - perdidas);
+      hudPuls.textContent = pulsaciones;
+
+      // Frases negativas cada ~10 pulsaciones perdidas
+      const nivelNeg = Math.floor(pulsaciones / 10);
+      if (nivelNeg < ultimaFraseNeg) {
+        ultimaFraseNeg = nivelNeg;
+        const idx = Math.floor(Math.random() * FRASES_NEGATIVAS.length);
+        mostrarBurbujaRoja(FRASES_NEGATIVAS[idx]);
+      }
+    }
+
+    // actualizar barra al retroceder
+    const pct = Math.min(100, ((posX - 60) / (META_X - 60)) * 100);
+    barra.style.width = pct + '%';
+  } else {
+    pulsDecayAcum = 0;
+  }
+
+  // Avanzar con velocidad — bloqueado a 8px antes de la meta si no hay suficientes pulsaciones
+  if (velocidad > 0) {
+    const tope = pulsaciones >= META_PULSACIONES ? META_X : META_X - 8;
+    posX = Math.min(tope, posX + velocidad * 0.85);
+    // Si está bloqueado y sigue presionando, mostrar aviso sutil
+    if (posX >= META_X - 9 && pulsaciones < META_PULSACIONES) {
+      velocidad = Math.max(0, velocidad - 0.15); // pierde impulso al chocar con el tope
+    }
+  }
+
+  // Líder siempre ~40px atrás, nunca sale de pantalla
+  const liderTarget = Math.max(28, posX - 52);
+  posXLider += (liderTarget - posXLider) * 0.08;
+
+  // Mensajes de estado
+  const enZonaDificil = posX >= ZONA_DIFICIL_X;
+  if (velocidad <= 0 && lastKeyTime > 0) {
+    msgVel.textContent = '↩️ ¡Está retrocediendo! ¡Presiona rápido!';
+    msgVel.classList.add('lento');
+  } else if (velocidad < 0.8) {
+    msgVel.textContent = '😔 Perdiendo impulso… ¡no te detengas!';
+    msgVel.classList.add('lento');
+  } else if (enZonaDificil && velocidad > 0) {
+    msgVel.textContent = '⚡ Zona difícil — ¡3 pulsaciones por cada paso!';
+    msgVel.classList.remove('lento');
+  } else if (velocidad < 2.2) {
+    msgVel.textContent = '🚶 Caminando despacio…';
+    msgVel.classList.add('lento');
+  } else if (velocidad < 3.2) {
+    msgVel.textContent = '🏃 ¡Buen ritmo, sigue!';
+    msgVel.classList.remove('lento');
+  } else {
+    msgVel.textContent = '🔥 ¡Imparable! ¡No pares!';
+    msgVel.classList.remove('lento');
+  }
+
+  animFrame = ts / 160;
+  dibujar(ts);
+
+  // Victoria: llegar físicamente a la meta Y tener suficientes pulsaciones
+  if (posX >= META_X && pulsaciones >= META_PULSACIONES) {
+    juegoActivo = false; victoria = true;
+    dibujar(ts);
+    setTimeout(mostrarVictoria, 700);
+    return;
+  }
+
+  requestAnimationFrame(loop);
+}
+
+// ══════════════════════════════════════════════════════════════
+//  DIBUJO
+// ══════════════════════════════════════════════════════════════
+function dibujar(ts) {
+  ctx.clearRect(0, 0, ANCHO, ALTO);
+
+  // Cielo
+  const sky = ctx.createLinearGradient(0, 0, 0, SUELO);
+  sky.addColorStop(0, '#0d1b2a'); sky.addColorStop(1, '#1a3a5c');
+  ctx.fillStyle = sky; ctx.fillRect(0, 0, ANCHO, SUELO);
+
+  // Zona difícil: sombreado rojizo en el último tramo
+  const zonaDX = ZONA_DIFICIL_X;
+  const gradZ = ctx.createLinearGradient(zonaDX, 0, ANCHO, 0);
+  gradZ.addColorStop(0, 'rgba(180,20,60,0)');
+  gradZ.addColorStop(1, 'rgba(180,20,60,0.18)');
+  ctx.fillStyle = gradZ;
+  ctx.fillRect(zonaDX, 0, ANCHO - zonaDX, SUELO);
+
+  // Suelo
+  ctx.fillStyle = '#1e4620'; ctx.fillRect(0, SUELO, ANCHO, ALTO - SUELO);
+  ctx.fillStyle = '#2C5F2D'; ctx.fillRect(0, SUELO, ANCHO, 6);
+
+  // Carril
+  ctx.setLineDash([18, 14]);
+  ctx.strokeStyle = 'rgba(255,255,255,.18)'; ctx.lineWidth = 2;
+  ctx.beginPath(); ctx.moveTo(0, SUELO - 22); ctx.lineTo(ANCHO, SUELO - 22); ctx.stroke();
+  ctx.setLineDash([]);
+
+  // Nubes
+  nube(120, 38, .8); nube(370, 24, 1.1); nube(600, 46, .7);
+
+  // Señal zona difícil
+  if (posX < ZONA_DIFICIL_X + 20) {
+    ctx.fillStyle = 'rgba(255,80,80,.7)';
+    ctx.font = 'bold 9px Cabin, sans-serif';
+    ctx.textAlign = 'center';
+    ctx.fillText('⚡ ZONA DIFÍCIL', ZONA_DIFICIL_X + (ANCHO - ZONA_DIFICIL_X) / 2, 18);
+    // línea
+    ctx.strokeStyle = 'rgba(255,80,80,.4)'; ctx.lineWidth = 1.5;
+    ctx.setLineDash([6,5]);
+    ctx.beginPath(); ctx.moveTo(ZONA_DIFICIL_X, 0); ctx.lineTo(ZONA_DIFICIL_X, SUELO); ctx.stroke();
+    ctx.setLineDash([]);
+  }
+
+  // Meta
+  dibujarMeta(META_X);
+
+  // Inicio
+  ctx.fillStyle = 'rgba(252,207,0,.35)'; ctx.fillRect(55, SUELO - 60, 4, 60);
+  ctx.fillStyle = 'rgba(252,207,0,.7)'; ctx.font = 'bold 9px Cabin,sans-serif'; ctx.textAlign = 'center';
+  ctx.fillText('INICIO', 57, SUELO - 66);
+
+  // Sombras
+  sombra(posXLider, SUELO + 4, 12);
+  sombra(posX,      SUELO + 4, 14);
+
+  // Líder (detrás del docente)
+  dibujarLider(posXLider, SUELO, velocidad, animFrame);
+  // Docente
+  dibujarDocente(posX, SUELO, velocidad, animFrame);
+}
+
+function nube(x, y, s) {
+  ctx.fillStyle = 'rgba(255,255,255,.07)';
+  ctx.beginPath();
+  ctx.arc(x, y, 22*s, 0, Math.PI*2);
+  ctx.arc(x+28*s, y+4*s, 18*s, 0, Math.PI*2);
+  ctx.arc(x-20*s, y+6*s, 14*s, 0, Math.PI*2);
+  ctx.fill();
+}
+
+function sombra(x, y, r) {
+  ctx.fillStyle = 'rgba(0,0,0,.22)';
+  ctx.beginPath(); ctx.ellipse(x, y, r, 4, 0, 0, Math.PI*2); ctx.fill();
+}
+
+function dibujarMeta(x) {
+  // poste
+  ctx.fillStyle = '#FCCF00'; ctx.fillRect(x - 2, SUELO - 90, 4, 90);
+  // bandera
+  ctx.fillStyle = '#FCCF00';
+  ctx.beginPath(); ctx.moveTo(x+2,SUELO-90); ctx.lineTo(x+30,SUELO-76); ctx.lineTo(x+2,SUELO-62); ctx.closePath(); ctx.fill();
+  ctx.fillStyle = '#000'; ctx.font = 'bold 8px Cabin,sans-serif'; ctx.textAlign = 'center';
+  ctx.fillText('META', x+14, SUELO-73);
+  // escuela
+  const ex = x + 20;
+  ctx.fillStyle = '#1E4D8C'; ctx.fillRect(ex-28, SUELO-64, 56, 64);
+  ctx.fillStyle = '#0d3060';
+  ctx.beginPath(); ctx.moveTo(ex-32,SUELO-64); ctx.lineTo(ex,SUELO-88); ctx.lineTo(ex+32,SUELO-64); ctx.closePath(); ctx.fill();
+  ctx.fillStyle = '#97BC62'; ctx.fillRect(ex-9, SUELO-28, 18, 28);
+  ctx.fillStyle = '#FCCF00'; ctx.fillRect(ex-22,SUELO-54,12,12); ctx.fillRect(ex+10,SUELO-54,12,12);
+  ctx.fillStyle = '#FFFFFF'; ctx.font = 'bold 7px Cabin,sans-serif'; ctx.textAlign = 'center';
+  ctx.fillText('SER', ex, SUELO-40);
+}
+
+// ── DOCENTE (bata blanca, sombrero verde) ────────────────────
+function dibujarDocente(x, y, vel, t) {
+  const freq  = Math.max(0.5, vel * 0.9);
+  const swing = vel > 0.2 ? Math.sin(t * freq) * 10 : 0;
+  const tilt  = vel > 0.2 ? Math.sin(t * freq) * 3  : 0;
+
+  // sombrero
+  ctx.fillStyle = '#2C5F2D';
+  ctx.beginPath(); ctx.ellipse(x, y-76, 10, 4, 0, 0, Math.PI*2); ctx.fill();
+  ctx.fillRect(x-7, y-84, 14, 10);
+  ctx.fillStyle = '#97BC62';
+  ctx.beginPath(); ctx.ellipse(x, y-76, 13, 4, 0, 0, Math.PI*2); ctx.fill();
+
+  // cabeza
+  ctx.save(); ctx.translate(x, y-68); ctx.rotate((tilt*Math.PI)/180);
+  ctx.fillStyle = '#F4C99C'; ctx.beginPath(); ctx.arc(0,0,13,0,Math.PI*2); ctx.fill();
+  ctx.fillStyle = '#333';
+  ctx.beginPath(); ctx.arc(4,-2,2.5,0,Math.PI*2); ctx.fill();
+  ctx.beginPath(); ctx.arc(-4,-2,2.5,0,Math.PI*2); ctx.fill();
+  ctx.strokeStyle = vel > 1.5 ? '#DD0779' : '#888'; ctx.lineWidth = 1.5;
+  ctx.beginPath(); ctx.arc(0, 2, 5, 0.2, Math.PI-0.2); ctx.stroke();
+  ctx.restore();
+
+  // bata
+  ctx.fillStyle = '#FFFFFF';
+  ctx.beginPath(); ctx.roundRect(x-10, y-54, 20, 32, 4); ctx.fill();
+  ctx.fillStyle = '#e0e0e0'; ctx.fillRect(x+3, y-50, 6, 6);
+  ctx.fillStyle = '#FCCF00';
+  ctx.beginPath();
+  ctx.moveTo(x-3,y-54); ctx.lineTo(x+3,y-54); ctx.lineTo(x+2,y-37); ctx.lineTo(x,y-34); ctx.lineTo(x-2,y-37); ctx.closePath(); ctx.fill();
+
+  // brazos
+  ctx.strokeStyle = '#F4C99C'; ctx.lineWidth = 5; ctx.lineCap = 'round';
+  ctx.beginPath(); ctx.moveTo(x-10,y-48); ctx.lineTo(x-20,y-37+swing*.5); ctx.stroke();
+  ctx.beginPath(); ctx.moveTo(x+10,y-48); ctx.lineTo(x+20,y-37-swing*.5); ctx.stroke();
+
+  // piernas
+  ctx.strokeStyle = '#1a1a5e'; ctx.lineWidth = 6;
+  ctx.beginPath(); ctx.moveTo(x-5,y-22); ctx.lineTo(x-8+swing,y); ctx.stroke();
+  ctx.beginPath(); ctx.moveTo(x+5,y-22); ctx.lineTo(x+8-swing,y); ctx.stroke();
+
+  // zapatos
+  ctx.fillStyle = '#222';
+  ctx.beginPath(); ctx.ellipse(x-8+swing,y,7,4,0,0,Math.PI*2); ctx.fill();
+  ctx.beginPath(); ctx.ellipse(x+8-swing,y,7,4,0,0,Math.PI*2); ctx.fill();
+}
+
+// ── LÍDER ESCOLAR (traje azul, clipboad, gesto de ánimo) ────
+function dibujarLider(x, y, vel, t) {
+  const freq  = Math.max(0.5, vel * 0.8);
+  const swing = vel > 0.2 ? Math.sin(t * freq + 0.5) * 9 : 0;
+
+  // cabello
+  ctx.fillStyle = '#4a2c0a';
+  ctx.beginPath(); ctx.arc(x, y-74, 13, Math.PI, 2*Math.PI); ctx.fill();
+
+  // cabeza
+  ctx.fillStyle = '#E8B899';
+  ctx.beginPath(); ctx.arc(x, y-68, 13, 0, Math.PI*2); ctx.fill();
+  ctx.fillStyle = '#333';
+  ctx.beginPath(); ctx.arc(x+4,-2+y-68,2.2,0,Math.PI*2); ctx.fill();
+  ctx.beginPath(); ctx.arc(x-4,-2+y-68,2.2,0,Math.PI*2); ctx.fill();
+  // boca motivadora (siempre animada)
+  ctx.strokeStyle = '#c0066a'; ctx.lineWidth = 1.5;
+  ctx.beginPath(); ctx.arc(x, y-66, 5, 0.2, Math.PI-0.2); ctx.stroke();
+
+  // traje azul
+  ctx.fillStyle = '#065A82';
+  ctx.beginPath(); ctx.roundRect(x-10, y-54, 20, 32, 4); ctx.fill();
+  // solapa blanca
+  ctx.fillStyle = '#FFFFFF';
+  ctx.beginPath(); ctx.moveTo(x-3,y-54); ctx.lineTo(x,y-46); ctx.lineTo(x+3,y-54); ctx.closePath(); ctx.fill();
+
+  // brazo izq. hacia adelante (animado, señala al frente)
+  ctx.strokeStyle = '#E8B899'; ctx.lineWidth = 5; ctx.lineCap = 'round';
+  const armAngle = Math.sin(t * 1.8) * 8;
+  ctx.beginPath(); ctx.moveTo(x-10,y-48); ctx.lineTo(x-22,y-38+swing*.4); ctx.stroke();
+  // brazo der. levantado motivando
+  ctx.beginPath(); ctx.moveTo(x+10,y-48); ctx.lineTo(x+22,y-58+armAngle); ctx.stroke();
+  // puño de ánimo
+  ctx.fillStyle = '#E8B899';
+  ctx.beginPath(); ctx.arc(x+22, y-60+armAngle, 5, 0, Math.PI*2); ctx.fill();
+
+  // clipboard en mano izquierda
+  ctx.fillStyle = '#F4A432';
+  ctx.fillRect(x-28, y-44, 10, 12);
+  ctx.fillStyle = '#FFF';
+  ctx.fillRect(x-27, y-43, 8, 3);
+  ctx.fillRect(x-27, y-38, 8, 1.5);
+
+  // piernas
+  ctx.strokeStyle = '#033d57'; ctx.lineWidth = 6;
+  ctx.beginPath(); ctx.moveTo(x-5,y-22); ctx.lineTo(x-8+swing,y); ctx.stroke();
+  ctx.beginPath(); ctx.moveTo(x+5,y-22); ctx.lineTo(x+8-swing,y); ctx.stroke();
+
+  // zapatos
+  ctx.fillStyle = '#111';
+  ctx.beginPath(); ctx.ellipse(x-8+swing,y,7,4,0,0,Math.PI*2); ctx.fill();
+  ctx.beginPath(); ctx.ellipse(x+8-swing,y,7,4,0,0,Math.PI*2); ctx.fill();
+
+  // etiqueta "Líder"
+  ctx.fillStyle = 'rgba(6,90,130,.85)';
+  ctx.beginPath(); ctx.roundRect(x-14, y-92, 28, 14, 4); ctx.fill();
+  ctx.fillStyle = '#FCCF00'; ctx.font = 'bold 8px Cabin,sans-serif'; ctx.textAlign = 'center';
+  ctx.fillText('Líder', x, y-82);
+}
+
+function mostrarVictoria() {
+  elJuego.style.display    = 'none';
+  elVictoria.style.display = 'flex';
+}
+</script>
+</body>
+</html>
